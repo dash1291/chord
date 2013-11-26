@@ -66,7 +66,7 @@ class Node(object):
     def create_finger_table(self):
         if self.successor:
             node = remote_call(self.successor['address'],
-                'find_successor', [self.finger_table[0]['start']])
+                'find_successor', [str(self.finger_table[0]['start'])])
 
             self.successor = node
             self.finger_table[0]['node'] = node
@@ -90,7 +90,7 @@ class Node(object):
                         [str(self.finger_table[i + 1]['start'])])
                     #print self.finger_table[i + 1]['node']
 
-                print self.finger_table[i]
+                #print self.finger_table[i]
             self.update_others()
 
         else:
@@ -103,18 +103,15 @@ class Node(object):
             self.successor = self.predecessor = successor
 
     def update_others(self):
-        print 'updating others'
         for i in range(RING_SIZE):
             ind = int((self.ident - (pow(2, i - 1))) % pow(2, RING_SIZE))
 
             p = self.find_predecessor(ind)
-            print p['address']
+            #print p['address']
             if int(p['ident']) != self.ident:
                 remote_call(p['address'], 'update_finger_table', [self.dict(), str(i)])
 
     def update_finger_table(self, node, finger_id):
-        print 'updating mine'
-
         finger_id = int(finger_id)
 
         if circular_range(int(node['ident']), int(self.ident), int(self.finger_table[finger_id]['node']['ident'])):
@@ -127,7 +124,8 @@ class Node(object):
                     'address': node['address'],
                     'ident': node['ident']
                 }
-
+        #print 'updated table'
+        #print '\n'.join(map(lambda x: str(x), self.finger_table))
 
     def update_predecessor(self, node):
         self.predecessor = {
@@ -143,7 +141,7 @@ class Node(object):
         pred['ident'] = int(pred['ident'])
         pred['successor']['ident'] = str(pred['successor']['ident'])
         #self.successor = pred['successor']
-        if pred['successor']['ident'] == self.successor['ident']:
+        if pred['successor']['ident'] == self.ident:
             return self.dict()
         else:
             return pred['successor']
@@ -153,9 +151,9 @@ class Node(object):
         node_id = node['ident']
         successor = self.successor
 
-        while not circular_range(int(ident), int(node_id), int(successor['ident']) or int(ident)):
+        while not circular_range(int(ident), int(node_id), int(successor['ident'])):
             if int(node_id) == self.ident:
-                node = self.closest_preceding_finger(node_id)
+                node = self.closest_preceding_finger(ident)
 
                 if int(node['ident']) == int(self.ident):
                     continue
@@ -179,23 +177,86 @@ class Node(object):
             i -= 1
 
         node = self.dict()
+        print 'finger %s' % node
         return node
 
     def run(self):
         rpc = zerorpc.Server(self)
+        print self.address
         rpc.bind('tcp://%s' % self.address)
         rpc.run()
 
 
-    """
-    def get_key(id):
+    def get_key(self, key):
+        #key_ident = int(sha1(key).hexdigest(), 16)
+
+        # for testing
+        key_ident = int(key)
+        node = self.find_successor(key_ident)
+
+        print node
+        if int(node['ident']) == self.ident:
+            if key in self.keys:
+                return 'Found in %s with value=%s' % (str(self.address), self.keys[key])
+            else:
+                return 'Not found'
+        else:
+            return remote_call(node['address'], 'get_key', [key])
 
 
-    def add_key(key, val):
+    def add_key(self, key, val):
+        #key_ident = int(sha1(key).hexdigest(), 16)
+
+        # for testing
+        key_ident = int(key)
+
+        #import pdb; pdb.set_trace()
+        node = self.find_successor(key_ident)
+
+        if int(node['ident']) == self.ident:
+            self.keys[key] = val
+            return 'Saved in %s' % self.address
+        else:
+            print 'sending to remote %s' % node['address']
+            return remote_call(node['address'], 'add_key', [key, val])
 
 
-    def delete_key(key):
+    def delete_key(self, key):
+        #key_ident = int(sha1(key).hexdigest(), 16)
+
+        # for testing
+        key_ident = int(key)
+
+        #import pdb; pdb.set_trace()
+        node = self.find_successor(key_ident)
+
+        if int(node['ident']) == self.ident:
+            if key in self.keys:
+                self.keys.pop(key)
+                return 'Removed %s from %s' % (key, self.address)
+            else:
+                return 'Not found'
+        else:
+            print 'sending to remote %s' % node['address']
+            return remote_call(node['address'], 'delete_key', [key])
 
 
-    def change_key(key, val):
-    """
+
+    def change_key(self, key, val):
+        #key_ident = int(sha1(key).hexdigest(), 16)
+
+        # for testing
+        key_ident = int(key)
+
+        #import pdb; pdb.set_trace()
+        node = self.find_successor(key_ident)
+
+        if int(node['ident']) == self.ident:
+            if key in self.keys:
+                self.keys[key] = val
+                return 'Changed %s in %s' % (key, self.address)
+            else:
+                return 'Not found'
+        else:
+            print 'sending to remote %s' % node['address']
+            return remote_call(node['address'], 'change_key', [key, val])
