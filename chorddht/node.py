@@ -31,10 +31,10 @@ class Node(object):
         self.predecessor = None
 
     def hash_key(self, key):
-        #key_ident = int(sha1(key).hexdigest(), 16)
+        return int(sha1(key).hexdigest(), 16)
 
-        # for testing
-        return int(key)
+    def hash_node(self, address):
+        return int(sha1(address).hexdigest(), 16)
 
     @property
     def ident(self):
@@ -42,7 +42,7 @@ class Node(object):
             return self._ident
 
         else:
-            self._ident = int(sha1(self.address).hexdigest(), 16)
+            self._ident = self.hash_node(self.address)
             return self._ident
 
     def dict(self):
@@ -205,10 +205,14 @@ class Node(object):
         node = self.find_successor(key_ident)
 
         if int(node['ident']) == int(self.ident):
+            addr = self.address
+
             if key in self.keys:
-                return 'Found in %s with value=%s' % (str(self.address), self.keys[key])
+                status = self.keys[key]
             else:
-                return 'Not found'
+                status = 'Not found'
+
+            return {'node': addr, 'status': status}
         else:
             return remote_call(node['address'], 'get_key', [key])
 
@@ -218,7 +222,8 @@ class Node(object):
 
         if int(node['ident']) == self.ident:
             self.keys[key] = val
-            return 'Saved in %s' % self.address
+            addr = self.address
+            return {'node': addr, 'status': 'Added'}
         else:
             print 'Sending to remote %s' % node['address']
             return remote_call(node['address'], 'add_key', [key, val])
@@ -228,25 +233,16 @@ class Node(object):
         node = self.find_successor(key_ident)
 
         if int(node['ident']) == self.ident:
+            addr = self.address
+
             if key in self.keys:
                 self.keys.pop(key)
-                return 'Removed %s from %s' % (key, self.address)
+                status = 'Deleted'
             else:
-                return 'Not found'
+                status = 'Not found'
+
+            return {'node': addr, 'status': status}
+
         else:
             print 'Sending to remote %s' % node['address']
             return remote_call(node['address'], 'delete_key', [key])
-
-    def change_key(self, key, val):
-        key_ident = self.hash_key(key)
-        node = self.find_successor(key_ident)
-
-        if int(node['ident']) == self.ident:
-            if key in self.keys:
-                self.keys[key] = val
-                return 'Changed %s in %s' % (key, self.address)
-            else:
-                return 'Not found'
-        else:
-            print 'Sending to remote %s' % node['address']
-            return remote_call(node['address'], 'change_key', [key, val])
