@@ -37,6 +37,7 @@ ChordConnection is the client that can be used to add or fetch data from the net
 Example:
 
 .. code-block:: pycon
+
   >>> from chorddht.client import ChordConnection
   >>> conn = ChordConnection('192.168.0.100:2000')
   >>> conn.set('test_key', 'test_value')
