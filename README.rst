@@ -3,7 +3,7 @@ chorddht
 
 A little WIP implementation of Distributed Hash Table based on Chord_
 
-.. Chord: http://en.wikipedia.org/wiki/Chord_(peer-to-peer)
+.. _Chord: http://en.wikipedia.org/wiki/Chord_(peer-to-peer)
 
 Installation
 ------------
@@ -37,13 +37,11 @@ ChordConnection is the client that can be used to add or fetch data from the net
 Example:
 
 .. code-block:: pycon
-
->>> conn = ChordConnection('192.168.0.100:2000')
-
->>> conn.set('test_key', 'test_value')
->>> True
-
->>> conn.get('test_key')
->>> 'test_value'
+  >>> from chorddht.client import ChordConnection
+  >>> conn = ChordConnection('192.168.0.100:2000')
+  >>> conn.set('test_key', 'test_value')
+  >>> True
+  >>> conn.get('test_key')
+  >>> 'test_value'
 
 One can pass the address of any of the existing nodes in the network.
