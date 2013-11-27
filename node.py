@@ -54,7 +54,8 @@ class Node(object):
 
     def join(self, successor_addr=None):
         if successor_addr:
-            node = remote_call(successor_addr, 'find_successor', [str(self.ident)])
+            node = remote_call(successor_addr, 'find_successor',
+                [str(self.ident)])
             self.successor = {
                 'address': node['address'],
                 'ident': node['ident']
@@ -65,8 +66,6 @@ class Node(object):
                 'start': int((self.ident + (pow(2, i - 1))) % pow(2, RING_SIZE))
             })
 
-        #print 'successor'
-        #print self.successor
         self.create_finger_table()
 
     def create_finger_table(self):
@@ -81,25 +80,23 @@ class Node(object):
 
             remote_call(node['address'], 'update_predecessor', [self.dict()])
 
-            #print self.finger_table[0]
-
             for i in range(RING_SIZE - 1):
                 start = self.finger_table[i + 1]['start']
 
-                if circular_range(start, self.ident, int(self.finger_table[i]['node']['ident'])):
+                if circular_range(start, self.ident,
+                    int(self.finger_table[i]['node']['ident'])):
                     self.finger_table[i + 1]['node'] = self.finger_table[i]['node']
-                    #print self.finger_table[i]['node']
 
                 else:
                     self.finger_table[i + 1]['node'] = remote_call(
                         self.successor['address'], 'find_successor',
                         [str(self.finger_table[i + 1]['start'])])
-                    #print self.finger_table[i + 1]['node']
 
-                #print self.finger_table[i]
             self.update_others()
 
-            keys = remote_call(self.successor['address'], 'pop_preceding_keys', [str(self.ident)])
+            # Request the successor for keys which belong to this node
+            keys = remote_call(self.successor['address'],
+                'pop_preceding_keys', [str(self.ident)])
 
             for key in keys:
                 self.keys[key] = keys[key]
@@ -125,7 +122,8 @@ class Node(object):
     def update_finger_table(self, node, finger_id):
         finger_id = int(finger_id)
 
-        if circular_range(int(node['ident']), int(self.ident), int(self.finger_table[finger_id]['node']['ident'])):
+        if circular_range(int(node['ident']), int(self.ident),
+            int(self.finger_table[finger_id]['node']['ident'])):
             self.finger_table[finger_id]['node'] = node
             #remote_call(self.predecessor['address'], 'update_finger_table',
             #    [node, finger_id])
@@ -135,8 +133,6 @@ class Node(object):
                     'address': node['address'],
                     'ident': node['ident']
                 }
-        #print 'updated table'
-        #print '\n'.join(map(lambda x: str(x), self.finger_table))
 
     def update_predecessor(self, node):
         self.predecessor = {
@@ -151,7 +147,7 @@ class Node(object):
         pred = self.find_predecessor(ident)
         pred['ident'] = int(pred['ident'])
         pred['successor']['ident'] = str(pred['successor']['ident'])
-        #self.successor = pred['successor']
+
         if pred['successor']['ident'] == self.ident:
             return self.dict()
         else:
@@ -188,7 +184,6 @@ class Node(object):
             i -= 1
 
         node = self.dict()
-        print 'finger %s' % node
         return node
 
     def run(self):
@@ -198,9 +193,8 @@ class Node(object):
         rpc.run()
 
     def pop_preceding_keys(self, ident):
-        #import pdb; pdb.set_trace()
         return_keys = {}
-        #import pdb; pdb.set_trace()
+
         for key in self.keys.keys():
             if self.hash_key(key) <= int(ident):
                 return_keys.update({key: self.keys.pop(key)})
@@ -210,7 +204,6 @@ class Node(object):
         key_ident = self.hash_key(key)
         node = self.find_successor(key_ident)
 
-        print node
         if int(node['ident']) == int(self.ident):
             if key in self.keys:
                 return 'Found in %s with value=%s' % (str(self.address), self.keys[key])
@@ -221,8 +214,6 @@ class Node(object):
 
     def add_key(self, key, val):
         key_ident = self.hash_key(key)
-
-        #import pdb; pdb.set_trace()
         node = self.find_successor(key_ident)
 
         if int(node['ident']) == self.ident:
@@ -234,8 +225,6 @@ class Node(object):
 
     def delete_key(self, key):
         key_ident = self.hash_key(key)
-
-        #import pdb; pdb.set_trace()
         node = self.find_successor(key_ident)
 
         if int(node['ident']) == self.ident:
@@ -250,8 +239,6 @@ class Node(object):
 
     def change_key(self, key, val):
         key_ident = self.hash_key(key)
-
-        #import pdb; pdb.set_trace()
         node = self.find_successor(key_ident)
 
         if int(node['ident']) == self.ident:
