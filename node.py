@@ -30,6 +30,12 @@ class Node(object):
         self.successor = None
         self.predecessor = None
 
+    def hash_key(self, key):
+        #key_ident = int(sha1(key).hexdigest(), 16)
+
+        # for testing
+        return int(key)
+
     @property
     def ident(self):
         if self._ident:
@@ -92,6 +98,11 @@ class Node(object):
 
                 #print self.finger_table[i]
             self.update_others()
+
+            keys = remote_call(self.successor['address'], 'pop_preceding_keys', [str(self.ident)])
+
+            for key in keys:
+                self.keys[key] = keys[key]
 
         else:
             for i in range(RING_SIZE):
@@ -186,16 +197,21 @@ class Node(object):
         rpc.bind('tcp://%s' % self.address)
         rpc.run()
 
+    def pop_preceding_keys(self, ident):
+        #import pdb; pdb.set_trace()
+        return_keys = {}
+        #import pdb; pdb.set_trace()
+        for key in self.keys.keys():
+            if self.hash_key(key) <= int(ident):
+                return_keys.update({key: self.keys.pop(key)})
+        return return_keys
 
     def get_key(self, key):
-        #key_ident = int(sha1(key).hexdigest(), 16)
-
-        # for testing
-        key_ident = int(key)
+        key_ident = self.hash_key(key)
         node = self.find_successor(key_ident)
 
         print node
-        if int(node['ident']) == self.ident:
+        if int(node['ident']) == int(self.ident):
             if key in self.keys:
                 return 'Found in %s with value=%s' % (str(self.address), self.keys[key])
             else:
@@ -203,12 +219,8 @@ class Node(object):
         else:
             return remote_call(node['address'], 'get_key', [key])
 
-
     def add_key(self, key, val):
-        #key_ident = int(sha1(key).hexdigest(), 16)
-
-        # for testing
-        key_ident = int(key)
+        key_ident = self.hash_key(key)
 
         #import pdb; pdb.set_trace()
         node = self.find_successor(key_ident)
@@ -217,15 +229,11 @@ class Node(object):
             self.keys[key] = val
             return 'Saved in %s' % self.address
         else:
-            print 'sending to remote %s' % node['address']
+            print 'Sending to remote %s' % node['address']
             return remote_call(node['address'], 'add_key', [key, val])
 
-
     def delete_key(self, key):
-        #key_ident = int(sha1(key).hexdigest(), 16)
-
-        # for testing
-        key_ident = int(key)
+        key_ident = self.hash_key(key)
 
         #import pdb; pdb.set_trace()
         node = self.find_successor(key_ident)
@@ -237,16 +245,11 @@ class Node(object):
             else:
                 return 'Not found'
         else:
-            print 'sending to remote %s' % node['address']
+            print 'Sending to remote %s' % node['address']
             return remote_call(node['address'], 'delete_key', [key])
 
-
-
     def change_key(self, key, val):
-        #key_ident = int(sha1(key).hexdigest(), 16)
-
-        # for testing
-        key_ident = int(key)
+        key_ident = self.hash_key(key)
 
         #import pdb; pdb.set_trace()
         node = self.find_successor(key_ident)
@@ -258,5 +261,5 @@ class Node(object):
             else:
                 return 'Not found'
         else:
-            print 'sending to remote %s' % node['address']
+            print 'Sending to remote %s' % node['address']
             return remote_call(node['address'], 'change_key', [key, val])
