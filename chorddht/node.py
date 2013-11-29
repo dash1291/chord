@@ -68,6 +68,14 @@ class Node(object):
 
         self.create_finger_table()
 
+    def leave(self):
+        self.update_others(self.successor)
+        remote_call(self.successor['address'], 'update_predecessor', [self.predecessor])
+
+        # transfer the keys
+        for key in self.keys:
+            remote_call(self.predecessor['address'], 'add_key', [key, self.keys[key]])
+
     def create_finger_table(self):
         if self.successor:
             node = remote_call(self.successor['address'],
@@ -92,7 +100,7 @@ class Node(object):
                         self.successor['address'], 'find_successor',
                         [str(self.finger_table[i + 1]['start'])])
 
-            self.update_others()
+            self.update_others(self.dict())
 
             # Request the successor for keys which belong to this node
             keys = remote_call(self.successor['address'],
@@ -110,19 +118,28 @@ class Node(object):
             }
             self.successor = self.predecessor = successor
 
-    def update_others(self):
+    def update_others(self, node):
         for i in range(RING_SIZE):
             ind = int((self.ident - (pow(2, i - 1))) % pow(2, RING_SIZE))
 
             p = self.find_predecessor(ind)
             #print p['address']
             if int(p['ident']) != self.ident:
-                remote_call(p['address'], 'update_finger_table', [self.dict(), str(i)])
+                remote_call(p['address'], 'update_finger_table', [node, str(i)])
 
     def update_finger_table(self, node, finger_id):
         finger_id = int(finger_id)
 
-        if circular_range(int(node['ident']), int(self.ident),
+        if self.ident == int(node['ident']):
+            self.finger_table[finger_id]['node'] = node
+
+            if finger_id == 0:
+                self.successor = {
+                    'address': node['address'],
+                    'ident': node['ident']
+                }
+
+        elif circular_range(int(node['ident']), int(self.ident),
             int(self.finger_table[finger_id]['node']['ident'])):
             self.finger_table[finger_id]['node'] = node
             #remote_call(self.predecessor['address'], 'update_finger_table',
